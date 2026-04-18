@@ -38,25 +38,35 @@ O Worker utiliza o conceito de confirmação (ACK). Se o processo falhar antes d
 
 Copie o bloco de código abaixo e execute-o no seu terminal **PowerShell** na raiz do projeto. Este script automatiza o ciclo de vida completo do teste:
 
-```powershell
+```powershellcls
+# --- LIMPEZA PREVENTIVA ---
+Write-Host "Limpando processos anteriores na porta 5000..." -ForegroundColor Gray
+Get-Process dotnet -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq "" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+
 # 1. Garante que a Infraestrutura (SQL Server e Azurite) esteja ativa
 Write-Host "Subindo containers do Docker..." -ForegroundColor Gray
 docker-compose up -d
 
-# 2. Inicia a API em background para permitir a execução dos testes
-Write-Host "Iniciando API HotelSync.Api..." -ForegroundColor Gray
-`$apiProcess = Start-Process dotnet -ArgumentList "run --project HotelSync.Api" -PassThru -NoNewWindow
+# 2. Inicia a API em background REDIRECIONANDO O LOG
+# Redirecionamos a saída para 'api_log.txt' para o console ficar limpo
+Write-Host "Iniciando API HotelSync.Api (Silenciosa)..." -ForegroundColor Gray
+$apiProcess = Start-Process dotnet -ArgumentList "run --project HotelSync.Api" -PassThru -NoNewWindow -RedirectStandardOutput "api_log.txt" -RedirectStandardError "api_err.txt"
 
-# 3. Aguarda o tempo de boot e criação do banco (EnsureCreated)
-Write-Host "Aguardando inicialização (10s)..." -ForegroundColor Gray
-Start-Sleep -Seconds 10 
+# 3. Aguarda o tempo de boot
+Write-Host "Aguardando inicialização (12s)..." -ForegroundColor Gray
+Start-Sleep -Seconds 12
 
-# 4. Executa os Testes de Integração via xUnit
+# 4. Executa os Testes de Integração
 Write-Host "Executando Testes de Idempotência..." -ForegroundColor Yellow
-dotnet test HotelSync.Tests
+dotnet test HotelSync.Tests --logger "console;verbosity=minimal"
 
-# 5. Encerra o processo da API e limpa o ambiente
-Write-Host "Finalizando processos..." -ForegroundColor Gray
-Stop-Process -Id `$apiProcess.Id -Force
+# 5. Encerra o processo da API de forma segura
+Write-Host "Finalizando processos e limpando logs temporários..." -ForegroundColor Gray
+if ($apiProcess) {
+    Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+}
+# Opcional: Remove os logs se o teste passar, ou deixe para inspeção
+Remove-Item "api_log.txt", "api_err.txt" -ErrorAction SilentlyContinue
 
-Write-Host "``n✅ Ciclo de teste concluído com sucesso!" -ForegroundColor Green
+Write-Host "`n✅ Ciclo de teste concluído com sucesso e console limpo!" -ForegroundColor Green
