@@ -34,29 +34,29 @@ O Worker utiliza o conceito de confirmação (ACK). Se o processo falhar antes d
 
 ## 🔧 Como rodar o projeto
 
-1. Certifique-se de ter o **Docker** instalado.
-2. Execute esse script no PowerShell na raiz da sln para testar.
+### Como executar os testes (Script de Orquestração)
 
-Write-Host "--- Iniciando Orquestração de Testes de Integração ---" -ForegroundColor Cyan
+Copie o bloco de código abaixo e execute-o no seu terminal **PowerShell** na raiz do projeto. Este script automatiza o ciclo de vida completo do teste:
 
-# 1. Garante que a Infra (SQL/Azurite) está UP
-Write-Host "1. Subindo Containers (Docker)..." -ForegroundColor Gray
+```powershell
+# 1. Garante que a Infraestrutura (SQL Server e Azurite) esteja ativa
+Write-Host "Subindo containers do Docker..." -ForegroundColor Gray
 docker-compose up -d
 
-# 2. Sobe a API em background (sem abrir janela)
-Write-Host "2. Iniciando API em background..." -ForegroundColor Gray
-$apiProcess = Start-Process dotnet -ArgumentList "run --project HotelSync.Api" -PassThru -NoNewWindow
+# 2. Inicia a API em background para permitir a execução dos testes
+Write-Host "Iniciando API HotelSync.Api..." -ForegroundColor Gray
+`$apiProcess = Start-Process dotnet -ArgumentList "run --project HotelSync.Api" -PassThru -NoNewWindow
 
-# 3. Aguarda a API estabilizar (Health Check simples)
-Write-Host "3. Aguardando API ficar online..." -ForegroundColor Gray
+# 3. Aguarda o tempo de boot e criação do banco (EnsureCreated)
+Write-Host "Aguardando inicialização (10s)..." -ForegroundColor Gray
 Start-Sleep -Seconds 10 
 
-# 4. Executa os Testes de Integração
-Write-Host "4. Executando xUnit Tests..." -ForegroundColor Yellow
+# 4. Executa os Testes de Integração via xUnit
+Write-Host "Executando Testes de Idempotência..." -ForegroundColor Yellow
 dotnet test HotelSync.Tests
 
-# 5. Finaliza a API após o teste
-Write-Host "5. Limpando ambiente..." -ForegroundColor Gray
-Stop-Process -Id $apiProcess.Id -Force
+# 5. Encerra o processo da API e limpa o ambiente
+Write-Host "Finalizando processos..." -ForegroundColor Gray
+Stop-Process -Id `$apiProcess.Id -Force
 
-Write-Host "`n✅ Ciclo de teste finalizado com sucesso!" -ForegroundColor Green
+Write-Host "``n✅ Ciclo de teste concluído com sucesso!" -ForegroundColor Green
