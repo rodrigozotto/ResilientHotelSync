@@ -1,0 +1,31 @@
+﻿Write-Host "--- Criando .gitignore Profissional ---" -ForegroundColor Cyan
+
+$gitignoreContent = @"
+## [Visual Studio]
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+
+## [Core]
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## [Code Analysis]
+*.CodeAnalysisLog.xml
+*.lastcodeanalysiststmp
+
+## [Docker]
+.dockerignore
+
+## [OS]
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+"@
+
+Set-Content -Path ".gitignore" -Value $gitignoreContent
+Write-Host "✅ .gitignore criado! Agora seu repositório está limpo e pronto." -ForegroundColor Green
